@@ -1,0 +1,5 @@
+Flask
+tensorflow
+numpy
+Pillow
+Werkzeug==2.0.3

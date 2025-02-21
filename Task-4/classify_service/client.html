@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Classification</title>
+    <style>
+        .main-title {
+            text-align: center;
+            font-size: 2em;
+            margin-top: 10px;
+        }
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .camera-container {
+            position: relative;
+            width: 350px;
+            height: 350px;
+            margin: 0 auto;
+        }
+        video, canvas { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #333;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        canvas {
+            display: none;
+        }
+        button { 
+            margin: 15px;
+            padding: 12px 24px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #response {
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            margin: 10px auto;
+            max-width: 400px;
+            font-size: 1.5em;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <h2 class="main-title">Image Classification</h2>
+    <div class="camera-container">
+        <video id="webcam" autoplay></video>
+        <canvas id="canvas"></canvas>
+    </div>
+    <br>
+    <button id="captureBtn" onclick="toggleCapture()">Capture</button>
+    <button id="classifyBtn" onclick="sendImage()" disabled>Classify Image</button>
+    <h3>Classification Result:</h3>
+    <p id="response">Waiting for classification...</p>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const captureBtn = document.getElementById('captureBtn');
+        const classifyBtn = document.getElementById('classifyBtn');
+        let isCapturing = true;
+
+        // Start webcam feed
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream)
+            .catch(err => console.error("Error accessing webcam: ", err));
+
+        function toggleCapture() {
+            if (isCapturing) {
+                // Capture image
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.style.display = 'block';
+                video.style.display = 'none';
+                captureBtn.textContent = 'Recapture';
+                classifyBtn.disabled = false;
+            } else {
+                // Return to live feed
+                canvas.style.display = 'none';
+                video.style.display = 'block';
+                captureBtn.textContent = 'Capture';
+                classifyBtn.disabled = true;
+            }
+            isCapturing = !isCapturing;
+        }
+
+        function sendImage() {
+            classifyBtn.disabled = true;
+            
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append("image", blob, "webcam.jpg");
+
+                fetch("/predict", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('response').textContent = data.predictions//JSON.stringify(data, null, 2);
+                })
+                .catch(error => console.error("Error sending image:", error));
+            }, "image/jpeg");
+            // canvas.style.display = 'none';
+            // video.style.display = 'block';
+            // captureBtn.textContent = 'Capture';
+            // isCapturing = true;
+        }
+    </script>
+</body>
+</html>
